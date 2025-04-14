@@ -24,7 +24,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.get("/", (req, res) => {
-  res.send({ message: "LyftSyncing in her heart, crack me up, duh" });
+  res.send({ message: "LyftSyncing, crack me up, duh" });
 });
 app.use("/auth", authRoutes);
 app.use("/rides", rideRoutes);
