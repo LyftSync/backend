@@ -1,15 +1,29 @@
-# backend
+# backend - LyftSync
 
-To install dependencies:
+This is the backend repository for LyftSync, a ride-sharing application designed for seamless coordination and efficient transportation.
 
-```bash
-bun install
-```
+## Technologies
 
-To run:
+- **Bun:** A fast, all-in-one JavaScript runtime. This project was initialized using `bun init` with bun v1.2.10. Learn more at [Bun](https://bun.sh).
 
-```bash
-bun run index.ts
-```
+## Setup and Installation
 
-This project was created using `bun init` in bun v1.2.10. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
+1.  **Install Dependencies:**
+
+    ```bash
+    bun install
+    ```
+
+2.  **Environment Variables:**
+
+    This application relies on environment variables for configuration.
+
+    - **Important:** Before running the application, create a `.env` file in the root directory.
+    - Use the `.env.example` file as a template for the required environment variables.
+    - Ensure all necessary variables are defined in your `.env` file.
+
+3.  **Running the Application:**
+
+    ```bash
+    bun run server.js
+    ```
