@@ -1,86 +1,50 @@
-import { getDB } from "../config/db.js";
-import { ObjectId } from "mongodb";
-import { createRideRoute, findRouteByRideId } from "./RideRoute.js";
+import mongoose from "mongoose";
 
-export async function createRide(rideData) {
-  const db = getDB();
-  const { route, ...rideDetails } = rideData;
-  const ride = { ...rideDetails, createdAt: new Date(), status: "open" };
-  const result = await db.collection("rides").insertOne(ride);
-  const rideId = result.insertedId;
-  if (route && Array.isArray(route)) {
-    await createRideRoute(rideId, route);
-  }
-  return { ...ride, _id: rideId };
-}
+const LocationSchema = new mongoose.Schema(
+  {
+    type: { type: String, enum: ["Point"], required: true, default: "Point" },
+    coordinates: { type: [Number], required: true }, // [longitude, latitude]
+    address: { type: String, trim: true },
+  },
+  { _id: false },
+);
 
-export async function findRideById(rideId) {
-  const db = getDB();
-  const ride = await db
-    .collection("rides")
-    .findOne({ _id: new ObjectId(rideId) });
-  if (ride) {
-    const routeData = await findRouteByRideId(rideId);
-    ride.route = routeData ? routeData.route : [];
-  }
-  return ride;
-}
+const RideSchema = new mongoose.Schema(
+  {
+    driver: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    startLocation: { type: LocationSchema, required: true },
+    endLocation: { type: LocationSchema, required: true },
+    // For searching rides along a route (future enhancement)
+    // routePolyline: { type: String },
+    departureTime: { type: Date, required: true },
+    estimatedArrivalTime: { type: Date },
+    availableSeats: { type: Number, required: true, min: 1, default: 1 },
+    status: {
+      type: String,
+      enum: [
+        "pending",
+        "active",
+        "completed",
+        "cancelled_by_driver",
+        "cancelled_by_system",
+      ],
+      default: "pending",
+    },
+    pricePerSeat: { type: Number, default: 0 },
+    passengers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    notes: { type: String, trim: true },
+  },
+  { timestamps: true },
+);
 
-export async function deleteRide(rideId, userId) {
-  const db = getDB();
-  const result = await db
-    .collection("rides")
-    .deleteOne({ _id: new ObjectId(rideId), driverId: new ObjectId(userId) });
-  if (result.deletedCount > 0) {
-    await db
-      .collection("ride_routes")
-      .deleteOne({ rideId: new ObjectId(rideId) });
-  }
-  return result;
-}
+// Create a 2dsphere index on startLocation for geospatial queries
+RideSchema.index({ startLocation: "2dsphere" });
+RideSchema.index({ endLocation: "2dsphere" });
+RideSchema.index({ driver: 1, status: 1 });
+RideSchema.index({ departureTime: 1, status: 1 });
 
-export async function createRideRequest(rideId, riderId) {
-  const db = getDB();
-  const request = {
-    rideId: new ObjectId(rideId),
-    riderId: new ObjectId(riderId),
-    status: "pending",
-    createdAt: new Date(),
-  };
-  const result = await db.collection("ride_requests").insertOne(request);
-  return { ...request, _id: result.insertedId };
-}
-
-export async function findRequestById(requestId) {
-  const db = getDB();
-  return await db
-    .collection("ride_requests")
-    .findOne({ _id: new ObjectId(requestId) });
-}
-
-export async function updateRequestStatus(requestId, status) {
-  const db = getDB();
-  return await db
-    .collection("ride_requests")
-    .updateOne(
-      { _id: new ObjectId(requestId) },
-      { $set: { status, updatedAt: new Date() } },
-    );
-}
-
-export async function updateRideStatus(rideId, status) {
-  const db = getDB();
-  return await db
-    .collection("rides")
-    .updateOne(
-      { _id: new ObjectId(rideId) },
-      { $set: { status, updatedAt: new Date() } },
-    );
-}
-
-export async function decrementRideSeats(rideId) {
-  const db = getDB();
-  return await db
-    .collection("rides")
-    .updateOne({ _id: new ObjectId(rideId) }, { $inc: { availableSeats: -1 } });
-}
+export default mongoose.model("Ride", RideSchema);
