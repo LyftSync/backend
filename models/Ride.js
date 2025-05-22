@@ -22,7 +22,7 @@ const RideSchema = new mongoose.Schema(
     // routePolyline: { type: String },
     departureTime: { type: Date, required: true },
     estimatedArrivalTime: { type: Date },
-    availableSeats: { type: Number, required: true, min: 1, default: 1 },
+    availableSeats: { type: Number, required: true, min: 0, default: 1 },
     status: {
       type: String,
       enum: [
@@ -42,8 +42,8 @@ const RideSchema = new mongoose.Schema(
 );
 
 // Create a 2dsphere index on startLocation for geospatial queries
-RideSchema.index({ startLocation: "2dsphere" });
-RideSchema.index({ endLocation: "2dsphere" });
+RideSchema.index({ "startLocation.coordinates": "2dsphere" });
+RideSchema.index({ "endLocation.coordinates": "2dsphere" });
 RideSchema.index({ driver: 1, status: 1 });
 RideSchema.index({ departureTime: 1, status: 1 });
 

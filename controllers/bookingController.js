@@ -105,21 +105,22 @@ const updateBookingStatus = asyncHandler(async (req, res) => {
 
   // --- Authorization and Logic ---
   let updatedBooking;
-  const session = await mongoose.startSession(); // For transaction
-  session.startTransaction();
+  // REMOVED: const session = await mongoose.startSession(); // For transaction
+  // REMOVED: session.startTransaction();
 
   try {
     if (ride.driver.toString() === userId.toString()) {
       // Action by Driver
       if (status === "accepted") {
         if (booking.status !== "pending") {
+          res.status(400); // Set status before throwing
           throw new Error(
             `Cannot accept a booking that is already ${booking.status}`,
           );
         }
         if (ride.availableSeats < booking.requestedSeats) {
-          await session.abortTransaction();
-          session.endSession();
+          // REMOVED: await session.abortTransaction();
+          // REMOVED: session.endSession();
           res.status(400);
           throw new Error(
             "Not enough seats available on the ride to accept this booking.",
@@ -130,29 +131,32 @@ const updateBookingStatus = asyncHandler(async (req, res) => {
         ride.passengers.push(booking.rider);
         booking.status = "accepted";
 
-        await ride.save({ session });
-        updatedBooking = await booking.save({ session });
+        await ride.save(); // REMOVED: { session }
+        updatedBooking = await booking.save(); // REMOVED: { session }
         // Optionally: Notify rider of acceptance
       } else if (status === "rejected_by_driver") {
         if (!["pending", "accepted"].includes(booking.status)) {
+          res.status(400); // Set status before throwing
           throw new Error(`Cannot reject a booking that is ${booking.status}`);
         }
         // If it was an accepted booking being rejected (e.g. driver change of plans before ride start)
         if (booking.status === "accepted") {
           ride.availableSeats += booking.requestedSeats;
           ride.passengers.pull(booking.rider);
-          await ride.save({ session });
+          await ride.save(); // REMOVED: { session }
         }
         booking.status = "rejected_by_driver";
-        updatedBooking = await booking.save({ session });
+        updatedBooking = await booking.save(); // REMOVED: { session }
         // Optionally: Notify rider of rejection
       } else {
+        res.status(400); // Set status before throwing
         throw new Error("Invalid status update for driver");
       }
     } else if (booking.rider.toString() === userId.toString()) {
       // Action by Rider
       if (status === "cancelled_by_rider") {
         if (!["pending", "accepted"].includes(booking.status)) {
+          res.status(400); // Set status before throwing
           throw new Error(
             `Cannot cancel a booking that is already ${booking.status}`,
           );
@@ -162,30 +166,37 @@ const updateBookingStatus = asyncHandler(async (req, res) => {
           if (["pending", "active"].includes(ride.status)) {
             ride.availableSeats += booking.requestedSeats;
             ride.passengers.pull(booking.rider);
-            await ride.save({ session });
+            await ride.save(); // REMOVED: { session }
           }
         }
         booking.status = "cancelled_by_rider";
-        updatedBooking = await booking.save({ session });
+        updatedBooking = await booking.save(); // REMOVED: { session }
         // Optionally: Notify driver of cancellation
       } else {
+        res.status(400); // Set status before throwing
         throw new Error("Invalid status update for rider");
       }
     } else {
-      await session.abortTransaction();
-      session.endSession();
+      // REMOVED: await session.abortTransaction();
+      // REMOVED: session.endSession();
       res.status(403);
       throw new Error("Not authorized to update this booking");
     }
 
-    await session.commitTransaction();
-    session.endSession();
+    // REMOVED: await session.commitTransaction();
+    // REMOVED: session.endSession();
     res.json(updatedBooking);
   } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
-    res.status(400); // Or specific error code from within the try
-    throw new Error(error.message || "Booking status update failed");
+    // REMOVED: await session.abortTransaction(); // This would also fail if session couldn't start
+    // REMOVED: session.endSession();
+    
+    // Ensure a status code is set if not already.
+    // If error originated from one of the specific checks above, status would already be set.
+    // If it's a generic save error, default to 400 or let errorHandler decide 500.
+    if (res.statusCode === 200) { // If no specific error status was set before this catch
+        res.status(400); 
+    }
+    throw new Error(error.message || "Booking status update failed"); // Let global errorHandler handle this
   }
 });
 
